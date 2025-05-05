@@ -400,24 +400,11 @@ const Dashboard = () => {
                               ).toLocaleDateString()}`;
 
                               if (diffDays <= 0) {
-                                return (
-                                  <span className="flex items-center">
-                                    {deadlineText}{" "}
-                                    <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                      Expired
-                                    </span>
-                                  </span>
-                                );
-                              } else if (diffDays <= 3) {
-                                return (
-                                  <span className="flex items-center">
-                                    {deadlineText}{" "}
-                                    <span className="ml-2 bg-yellow-500 text-dark-800 text-xs px-2 py-0.5 rounded-full">
-                                      {diffDays} day{diffDays === 1 ? "" : "s"}{" "}
-                                      left
-                                    </span>
-                                  </span>
-                                );
+                                return <span className="flex items-center">{deadlineText} <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">Expired</span></span>;
+                              } else if ((diffDays-1) <= 1) {
+                                return <span className="flex items-center">{deadlineText} <span className="ml-2 bg-yellow-500 text-dark-800 text-xs px-2 py-0.5 rounded-full">{diffDays-1} day{diffDays === 1 ? '' : ''} left</span></span>;
+                              }else if ((diffDays-1) <= 2) {
+                                return <span className="flex items-center">{deadlineText} <span className="ml-2 bg-yellow-500 text-dark-800 text-xs px-2 py-0.5 rounded-full">{diffDays-1} day{diffDays === 1 ? '' : 's'} left</span></span>;
                               }
 
                               return deadlineText;

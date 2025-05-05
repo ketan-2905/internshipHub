@@ -13,18 +13,37 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
+    company: "",
     role: "",
-    companyName: "",
-    location: "",
-    modeOfWork: "Remote",
-    stipend: "",
-    duration: "",
-    durationType: "Months",
-    deadline: "",
-    description: "",
     requirements: "",
-    responsibilities: "",
+    mode: "", // Initialize as empty string to force selection
+    stipend: "",
+    deadline: "",
+    formLink: "",
+    calendarEvents: [] // Initialize as empty array
   });
+  
+  // Handle calendar events changes
+  const handleCalendarEventChange = (index, field, value) => {
+    const updatedEvents = [...formData.calendarEvents];
+    updatedEvents[index] = {
+      ...updatedEvents[index],
+      [field]: value
+    };
+    setFormData({...formData, calendarEvents: updatedEvents});
+  };
+  
+  const addCalendarEvent = () => {
+    setFormData({
+      ...formData,
+      calendarEvents: [...formData.calendarEvents, { title: "", date: "" }]
+    });
+  };
+  
+  const removeCalendarEvent = (index) => {
+    const updatedEvents = formData.calendarEvents.filter((_, i) => i !== index);
+    setFormData({...formData, calendarEvents: updatedEvents});
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -65,36 +84,90 @@ const Admin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     try {
-      await axiosClient.post("/api/internships", formData, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      // Filter out empty calendar events
+      const validCalendarEvents = formData.calendarEvents.filter(
+        event => event.title && event.date
+      );
+  
+      // Prepare submission data
+      const submissionData = {
+        company: formData.company.trim(),
+        role: formData.role.trim(),
+        requirements: formData.requirements.trim(),
+        mode: formData.mode,
+        stipend: Number(formData.stipend) || 0,
+        deadline: formData.deadline,
+        formLink: formData.formLink.trim(),
+        calendarEvents: validCalendarEvents
+      };
+  
+      // Validate required fields
+      if (!submissionData.company || !submissionData.mode || !submissionData.formLink) {
+        alert("Please fill all required fields (marked with *)");
+        return;
+      }
+  
+      // Submit using Axios
+      const response = await axiosClient.post('/api/internships', submissionData, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}` // or your auth token source
+        }
       });
-      toast.success("Internship added successfully");
-      setShowAddModal(false);
-
-      // Refresh internships list
-      const response = await axiosClient.get("/api/internships", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      setInternships(response.data);
-
-      // Reset form
-      setFormData({
-        role: "",
-        companyName: "",
-        location: "",
-        modeOfWork: "Remote",
-        stipend: "",
-        duration: "",
-        durationType: "Months",
-        deadline: "",
-        description: "",
-        requirements: "",
-        responsibilities: "",
-      });
+  
+      // Handle success
+      if (response.status === 201) {
+        // Reset form on success
+        setFormData({
+          company: "",
+          role: "",
+          requirements: "",
+          mode: "",
+          stipend: "",
+          deadline: "",
+          formLink: "",
+          calendarEvents: []
+        });
+        
+        // Close modal or show success message
+        setShowAddModal(false);
+        alert('Internship created successfully!');
+        
+        // Optional: Refresh the internships list
+        fetchInternships(); // You would need to implement this function
+      }
+  
     } catch (error) {
-      console.error("Error adding internship:", error);
-      toast.error("Failed to add internship");
+      console.error('Error submitting form:', error);
+      
+      // Handle different error scenarios
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error('Error data:', error.response.data);
+        console.error('Error status:', error.response.status);
+        console.error('Error headers:', error.response.headers);
+        
+        if (error.response.status === 401) {
+          alert('Session expired. Please login again.');
+          // Redirect to login
+          navigate('/login');
+        } else if (error.response.data.message) {
+          alert(`Error: ${error.response.data.message}`);
+        } else {
+          alert('Error creating internship. Please try again.');
+        }
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error('No response received:', error.request);
+        alert('Network error. Please check your connection and try again.');
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error('Request setup error:', error.message);
+        alert('An unexpected error occurred. Please try again.');
+      }
     }
   };
 
@@ -253,7 +326,7 @@ const Admin = () => {
                           {internship.location}
                         </div>
                         <div className="text-sm text-gray-400">
-                          ₹{internship.stipend}/month
+                          ₹{internship.stipend}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -262,9 +335,6 @@ const Admin = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button className="text-primary-400 hover:text-primary-300 mr-3">
-                          Edit
-                        </button>
                         <button
                           className="text-red-500 hover:text-red-400"
                           onClick={() => deleteInternship(internship.id)}
@@ -370,7 +440,7 @@ const Admin = () => {
       </div>
 
       {/* Add Internship Modal */}
-      {showAddModal && (
+      {/* {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
           <div className="bg-dark-700 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
@@ -625,7 +695,212 @@ const Admin = () => {
             </form>
           </div>
         </div>
-      )}
+      )} */}
+
+{showAddModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+    <div className="bg-dark-700 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold text-white">
+          Add New Internship
+        </h2>
+        <button
+          onClick={() => setShowAddModal(false)}
+          className="text-gray-400 hover:text-white"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+
+<form onSubmit={handleSubmit} className="space-y-4">
+  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    {/* Company Field (Required) */}
+    <div>
+      <label htmlFor="company" className="block text-sm font-medium text-gray-300">
+        Company Name *
+      </label>
+      <input
+        type="text"
+        id="company"
+        name="company"
+        required
+        className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-dark-600 rounded-md shadow-sm text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+        value={formData.company}
+        onChange={handleChange}
+      />
+    </div>
+
+    {/* Role Field */}
+    <div>
+      <label htmlFor="role" className="block text-sm font-medium text-gray-300">
+        Role
+      </label>
+      <input
+        type="text"
+        id="role"
+        name="role"
+        className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-dark-600 rounded-md shadow-sm text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+        value={formData.role}
+        onChange={handleChange}
+      />
+    </div>
+
+    {/* Mode Field (Required) */}
+    <div>
+      <label htmlFor="mode" className="block text-sm font-medium text-gray-300">
+        Work Mode *
+      </label>
+      <select
+        id="mode"
+        name="mode"
+        required
+        className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-dark-600 rounded-md shadow-sm text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+        value={formData.mode}
+        onChange={handleChange}
+      >
+        <option value="">Select Mode</option>
+        <option value="Remote">Remote</option>
+        <option value="Onsite">Onsite</option>
+        <option value="Hybrid">Hybrid</option>
+      </select>
+    </div>
+
+    {/* Stipend Field */}
+    <div>
+      <label htmlFor="stipend" className="block text-sm font-medium text-gray-300">
+        Stipend (₹)
+      </label>
+      <input
+        type="number"
+        id="stipend"
+        name="stipend"
+        className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-dark-600 rounded-md shadow-sm text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+        value={formData.stipend}
+        onChange={handleChange}
+      />
+    </div>
+
+    {/* Deadline Field */}
+    <div>
+      <label htmlFor="deadline" className="block text-sm font-medium text-gray-300">
+        Deadline
+      </label>
+      <input
+        type="date"
+        id="deadline"
+        name="deadline"
+        className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-dark-600 rounded-md shadow-sm text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+        value={formData.deadline}
+        onChange={handleChange}
+      />
+    </div>
+
+    {/* Form Link Field (Required) */}
+    <div>
+      <label htmlFor="formLink" className="block text-sm font-medium text-gray-300">
+        Application Form URL *
+      </label>
+      <input
+        type="url"
+        id="formLink"
+        name="formLink"
+        required
+        className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-dark-600 rounded-md shadow-sm text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+        value={formData.formLink}
+        onChange={handleChange}
+        placeholder="https://example.com/apply"
+      />
+    </div>
+  </div>
+
+  {/* Requirements Field */}
+  <div>
+    <label htmlFor="requirements" className="block text-sm font-medium text-gray-300">
+      Requirements
+    </label>
+    <textarea
+      id="requirements"
+      name="requirements"
+      rows="3"
+      className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-dark-600 rounded-md shadow-sm text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+      value={formData.requirements}
+      onChange={handleChange}
+      placeholder="Enter each requirement on a new line"
+    ></textarea>
+  </div>
+
+  {/* Calendar Events Field */}
+  <div>
+    <label className="block text-sm font-medium text-gray-300">
+      Important Dates
+    </label>
+    {formData.calendarEvents.map((event, index) => (
+      <div key={index} className="flex gap-2 mt-2">
+        <input
+          type="text"
+          placeholder="Event title"
+          className="flex-1 px-3 py-2 border border-gray-600 bg-dark-600 rounded-md text-white"
+          value={event.title}
+          onChange={(e) => handleCalendarEventChange(index, 'title', e.target.value)}
+        />
+        <input
+          type="date"
+          className="px-3 py-2 border border-gray-600 bg-dark-600 rounded-md text-white"
+          value={event.date}
+          onChange={(e) => handleCalendarEventChange(index, 'date', e.target.value)}
+        />
+        <button
+          type="button"
+          onClick={() => removeCalendarEvent(index)}
+          className="px-2 text-red-400 hover:text-red-300"
+        >
+          ×
+        </button>
+      </div>
+    ))}
+    <button
+      type="button"
+      onClick={addCalendarEvent}
+      className="mt-2 px-3 py-1 text-sm bg-dark-600 text-gray-300 hover:text-white"
+    >
+      + Add Date
+    </button>
+  </div>
+
+  {/* Submit Buttons */}
+  <div className="flex justify-end space-x-3">
+    <button
+      type="button"
+      onClick={() => setShowAddModal(false)}
+      className="px-4 py-2 border border-gray-600 text-gray-300 rounded-md text-sm font-medium hover:bg-dark-600"
+    >
+      Cancel
+    </button>
+    <button
+      type="submit"
+      className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-medium hover:bg-primary-700"
+    >
+      Add Internship
+    </button>
+  </div>
+</form>
+    </div>
+  </div>
+)}
+
       {showUploadModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 bg-opacity-50 z-50">
           <div className="bg-gray-900 rounded-xl shadow-lg w-full max-w-md p-6 relative">

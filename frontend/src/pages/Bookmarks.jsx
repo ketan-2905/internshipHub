@@ -32,9 +32,10 @@ const Bookmarks = () => {
       });
       
       // Update the bookmarks list
-      setBookmarks(prevBookmarks => 
-        prevBookmarks.filter(bookmark => bookmark.id !== internshipId)
-      );
+      const response = await axiosClient.get('/api/bookmarks', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      setBookmarks(response.data);
       
       toast.success('Bookmark removed successfully');
     } catch (error) {
@@ -76,7 +77,7 @@ const Bookmarks = () => {
                       <p className="text-gray-400 text-sm">{bookmark.companyName}</p>
                     </div>
                     <button
-                      onClick={() => removeBookmark(bookmark.id)}
+                      onClick={() => removeBookmark(bookmark._id)}
                       className="text-primary-500 hover:text-primary-400 focus:outline-none"
                       aria-label="Remove bookmark"
                     >
@@ -99,7 +100,7 @@ const Bookmarks = () => {
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      ₹{bookmark.stipend}/month
+                      ₹{bookmark.stipend}
                     </div>
                     
                     <div className="flex items-center text-sm text-gray-400">
@@ -199,8 +200,10 @@ const Bookmarks = () => {
                               
                               if (diffDays <= 0) {
                                 return <span className="flex items-center">{deadlineText} <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">Expired</span></span>;
-                              } else if (diffDays <= 3) {
-                                return <span className="flex items-center">{deadlineText} <span className="ml-2 bg-yellow-500 text-dark-800 text-xs px-2 py-0.5 rounded-full">{diffDays} day{diffDays === 1 ? '' : 's'} left</span></span>;
+                              } else if ((diffDays-1) <= 1) {
+                                return <span className="flex items-center">{deadlineText} <span className="ml-2 bg-yellow-500 text-dark-800 text-xs px-2 py-0.5 rounded-full">{diffDays-1} day{diffDays === 1 ? '' : ''} left</span></span>;
+                              }else if ((diffDays-1) <= 2) {
+                                return <span className="flex items-center">{deadlineText} <span className="ml-2 bg-yellow-500 text-dark-800 text-xs px-2 py-0.5 rounded-full">{diffDays-1} day{diffDays === 1 ? '' : 's'} left</span></span>;
                               }
                               
                               return deadlineText;
